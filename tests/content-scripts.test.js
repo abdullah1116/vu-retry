@@ -8,14 +8,30 @@ const FETCHPATCH = source("content/fetchpatch.js");
 
 function retry503(bodyText, stored, dataset) {
   const timers = [];
-  const el = { id: "", style: {}, textContent: "" };
+  const nodes = [];
   const store = { v: stored ?? null };
+
+  const make = (tag) => {
+    const node = {
+      tagName: tag,
+      id: "",
+      style: {},
+      dataset: {},
+      textContent: "",
+      children: [],
+      appendChild(child) { this.children.push(child); },
+    };
+    nodes.push(node);
+    return node;
+  };
+  const byId = (id) => nodes.find((node) => node.id === id) ?? null;
+
   const ctx = {
     document: {
       body: { innerText: bodyText },
       documentElement: { dataset, appendChild() {} },
-      getElementById: () => null,
-      createElement: () => el,
+      getElementById: byId,
+      createElement: make,
     },
     sessionStorage: {
       getItem: () => store.v,
@@ -31,7 +47,10 @@ function retry503(bodyText, stored, dataset) {
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(RETRY503, ctx, { filename: "content/retry503.js" });
-  return { timers, store: store.v, banner: el.textContent };
+
+  const title = byId("__vu-retry-title")?.textContent ?? "";
+  const sub = byId("__vu-retry-sub")?.textContent ?? "";
+  return { timers, store: store.v, banner: [title, sub].filter(Boolean).join(" · ") };
 }
 
 async function fetchPatch(dataset) {
