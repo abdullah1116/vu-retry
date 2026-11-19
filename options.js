@@ -1,5 +1,6 @@
 const DEFAULTS = {
   autoReload: true,
+  retryCertErrors: true,
   pageReloads: 5,
   fetchRetries: 3,
   maxNavRetries: 4,
@@ -12,22 +13,33 @@ const NUMERIC = ["pageReloads", "fetchRetries", "maxNavRetries", "baseDelayMs", 
 
 const $ = (id) => document.getElementById(id);
 
+const clampInput = (el) => {
+  const lo = Number(el.min);
+  const hi = Number(el.max);
+  const n = Number(el.value);
+  const value = Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : lo;
+  el.value = String(value);
+  return value;
+};
+
 async function load() {
   const stored = await chrome.storage.local.get(null);
   const cfg = { ...DEFAULTS, ...stored };
 
   $("autoReload").checked = Boolean(cfg.autoReload);
+  $("retryCertErrors").checked = Boolean(cfg.retryCertErrors);
   for (const key of NUMERIC) $(key).value = String(cfg[key]);
 
   render();
 }
 
 async function save() {
-  const cfg = { autoReload: $("autoReload").checked };
-  for (const key of NUMERIC) {
-    const n = Number($(key).value);
-    if (Number.isFinite(n) && n >= 0) cfg[key] = n;
-  }
+  const cfg = {
+    autoReload: $("autoReload").checked,
+    retryCertErrors: $("retryCertErrors").checked,
+  };
+  for (const key of NUMERIC) cfg[key] = clampInput($(key));
+
   await chrome.storage.local.set(cfg);
   $("saved").classList.add("on");
   setTimeout(() => $("saved").classList.remove("on"), 1200);
@@ -51,7 +63,7 @@ async function render() {
   lines.push(
     p
       ? `probe   ${p.ok ? "OK" : "FAIL"}  status=${p.status || "-"}  ${p.latency}ms  ${new Date(p.at).toLocaleTimeString()}`
-      : "probe   (none yet)",
+      : "probe   (idle — open the VU site to enable)",
   );
   if (p?.detail) lines.push(`detail  ${p.detail}`);
   lines.push(`reloads ${s.reloads}   absorbed ${s.absorbed}`);

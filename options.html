@@ -42,6 +42,11 @@
     <label>Auto-reload when the page shows an upstream error
       <input type="checkbox" id="autoReload">
     </label>
+    <label>Also retry certificate errors
+      <input type="checkbox" id="retryCertErrors">
+    </label>
+    <p style="opacity:.65;margin:10px 0 0">Certificate retries re-attempt the handshake on the assumption that one of the
+      site's backends serves an incomplete chain. Turn this off to keep the browser's TLS warning in charge.</p>
   </fieldset>
 
   <fieldset>

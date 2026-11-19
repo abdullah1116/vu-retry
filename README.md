@@ -1,73 +1,105 @@
-# VU Retry — Chrome extension
+# VU Retry
 
-Absorbs the failure classes measured on `https://datesheet.vu.edu.pk` without a proxy.
+A Chrome extension that retries failed requests on `https://datesheet.vu.edu.pk`.
 
-## What it handles, and at which layer
+Unofficial. Not affiliated with, endorsed by, or supported by Virtual University.
+
+## Why this exists
+
+The datesheet host is a single IIS/ASP.NET farm that intermittently:
+
+- returns `503 The service is unavailable.` while its application pool queue is saturated,
+- serves normal `200`s that take 7–30 s,
+- fails TLS on one of its two backends, where the served chain is incomplete.
+
+All three are transient and per-request: the same URL usually succeeds a second later. A manual
+refresh fixes almost every case, which is exactly the kind of work a browser should do instead of a
+person.
+
+## What it does, and at which layer
 
 | Failure | Where it surfaces | Handled by |
 |---|---|---|
 | `503 The service is unavailable.` | HTML page with a body | content script detects the body, shows a countdown, reloads with backoff |
 | `net::ERR_EMPTY_RESPONSE`, `ERR_CONNECTION_RESET`, timeouts | browser error page (no body, no content script) | `webNavigation.onErrorOccurred` → background re-navigates the tab |
-| `net::ERR_CERT_AUTHORITY_INVALID`, `ERR_SSL_PROTOCOL_ERROR` | TLS handshake | same navigation retry — a new handshake may land on the healthy backend |
-| `5xx` on `fetch()` / `XMLHttpRequest` | inside the page | MAIN-world patch retries GET/HEAD up to 3× with backoff |
-| `net::ERR_ABORTED` | browser cancelled | **not retried** — retrying a cancellation loops |
+| `net::ERR_CERT_AUTHORITY_INVALID`, `ERR_SSL_PROTOCOL_ERROR` | TLS handshake | same navigation retry — a fresh handshake may land on the healthy backend |
+| `5xx` on `fetch()` | inside the page | MAIN-world patch retries GET/HEAD up to 3× with backoff |
+| `net::ERR_ABORTED` | the client cancelled | **not** retried — retrying a cancellation loops |
 
-Counters live in `sessionStorage` (per tab) and `chrome.storage.session`, so a retry loop cannot
-survive a tab close, and a hard cap stops the loop when upstream is genuinely down.
+Each layer has its own budget, so a retry storm cannot happen by accident:
 
-## Install
+| Layer | Budget | Default | Delays |
+|---|---|---|---|
+| Page reload | `pageReloads` | 5 | 0.5 → 1 → 2 → 4 → 8 s |
+| Navigation retry | `maxNavRetries` per tab per 60 s | 4 | 0.4 → 0.8 → 1.6 → 3.2 s |
+| `fetch` retry | `fetchRetries` per call | 3 | 0.3 → 0.6 → 1.2 s |
 
-The Flatpak Chrome cannot see `/home/d/tmp-dev`. Grant it read-only access to this folder:
+Counters live in `sessionStorage` (page) and `chrome.storage.session` (navigation), so they reset
+when a tab closes and survive the service worker being torn down.
 
-```bash
-flatpak override --user --filesystem=/home/d/tmp-dev/vu-retry-ext:ro com.google.Chrome
-```
-
-Verify the sandbox can see it:
-
-```bash
-flatpak run --command=ls com.google.Chrome /home/d/tmp-dev/vu-retry-ext
-```
-
-Then in Chrome:
+## Install (unpacked)
 
 1. `chrome://extensions`
 2. enable **Developer mode**
-3. **Load unpacked** → `/home/d/tmp-dev/vu-retry-ext`
-4. Pin **VU Retry**; the badge shows `OK` / `503` / `ERR` / `STOP`
+3. **Load unpacked** → this directory
+4. pin **VU Retry**; the badge reads `OK`, `503`, `ERR`, `CERT`, or `STOP`
 
-## Verify it is alive
+Requires Chrome 120 or newer (the extension uses a 30-second `chrome.alarms` period and
+`world: "MAIN"` content scripts).
 
-- Open `https://datesheet.vu.edu.pk/` — badge turns `OK` within 30 s.
-- Click the icon → live probe status, reload count, absorbed count.
-- Change a number, press Save, reload the page — settings persist in `chrome.storage.local`.
+## Settings
 
-## Tuning
+Right-click the icon → **Options**, or click the icon.
 
-| Setting | Default | Raise it when |
+| Setting | Default | Meaning |
 |---|---|---|
-| auto-reload | on | never — turn off to inspect a real 500 |
-| page reloads on 503 | 5 | upstream stays down for minutes and you want a patient tab |
-| fetch/XHR retries | 3 | the page's own Ajax postbacks keep dying |
-| nav retries / 60 s | 4 | error pages persist but a manual refresh works |
-| base delay | 400 ms | many tabs retry at once |
-| max delay | 8000 ms | you want a slow, patient loop |
-| probe timeout | 25000 ms | badge shows `ERR timeout` while pages still load |
+| auto-reload | on | master switch for the 503 page loop |
+| retry certificate errors | on | re-attempt a handshake that failed TLS validation |
+| page reloads | 5 | reload budget per tab, `0` disables the loop |
+| fetch retries | 3 | per-call budget for the in-page `fetch` patch, `0` disables it |
+| navigation retries | 4 | per tab, per rolling 60 s |
+| base / max delay | 400 / 8000 ms | exponential backoff bounds |
+| probe timeout | 25000 ms | how long the badge waits before calling the site unreachable |
 
-## Uninstall / revert
+Retry counts are read once per page load, so a changed value applies on the next navigation.
+
+## Privacy
+
+- No analytics, no telemetry, no remote code, no `eval`. The extension makes no request to any
+  origin other than `datesheet.vu.edu.pk`.
+- Nothing is transmitted anywhere. Retry counters are kept in `chrome.storage.session`, which is
+  memory-only and cleared when the browser closes.
+- The health probe runs at most every 30 s, only while a tab on the site is open, and sends
+  **no cookies** (`credentials: "omit"`).
+- Settings live in `chrome.storage.local` on your machine.
+
+## Known limits
+
+- **POST navigations cannot be replayed faithfully.** When a form submit (login, ASP.NET postback)
+  dies in transit, `chrome.tabs.update({url})` re-issues it as a **GET** — no extension API can
+  reconstruct a request body the browser never exposed. Expect to retype the form after such a
+  failure; the retry still gets you a working page.
+- **`XMLHttpRequest` is not patched.** Retrying an XHR cannot be done invisibly: the page's own
+  `onload`/`onreadystatechange` handlers have already seen the failing response by the time a
+  retry could be scheduled, so a retry would double-fire postback logic. `fetch` has a clean
+  choke point; XHR does not.
+- **The in-page budget is armable by the page.** The `fetch` retry count is handed to the MAIN
+  world through a `data-` attribute, so the page itself could raise or lower its own budget.
+  The blast radius is that tab only.
+- The two retry loops (page reload and navigation retry) keep separate counters, so a pathological
+  run could navigate a tab roughly 20 times. Both stop on their own budget.
+
+## Development
 
 ```bash
-flatpak override --user --reset com.google.Chrome
+# syntax
+node --check background.js
+node --check content/retry503.js
+
+# package
+zip -r -X -9 vu-retry.zip . -x '*.zip' -x 'dist/*'
 ```
 
-and remove the extension from `chrome://extensions`.
+## License
 
-## Limits worth knowing
-
-- A **503 returned to a top-level navigation** gives the content script a page to work with; a
-  navigation that dies at the socket level does **not**, which is why the `webNavigation` path
-  exists as a second, independent mechanism.
-- The extension cannot see the proxy's `ERR_EMPTY_RESPONSE` at 10 s if you still run the local
-  proxy — pick one. Both at once means two retry loops and double load.
-- POST requests are **not** retried by the fetch patch: a 500 may mean the server already acted.
-  `502/503/504` are retried for GET/HEAD only.
+MIT — see `LICENSE`.

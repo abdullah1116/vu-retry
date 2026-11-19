@@ -6,22 +6,20 @@
   const bodyText = (document.body?.innerText ?? "").trim();
   const broken =
     bodyText.length < 600 &&
-    (/service is unavailable/i.test(bodyText) ||
-      /server error in/i.test(bodyText) ||
-      /runtime error/i.test(bodyText));
+    (/the service is unavailable/i.test(bodyText) || /server error in '\/' application/i.test(bodyText));
 
   if (!broken) {
     sessionStorage.removeItem(KEY);
     return;
   }
 
-  const attempt = Number(sessionStorage.getItem(KEY) ?? 0);
-  chrome.runtime.sendMessage({ type: "vu-report", reloads: 1, absorbed: 1 }).catch(() => {});
-
   if (MAX === 0) {
     bar("auto-reload disabled \u00b7 page left as-is");
     return;
   }
+
+  const stored = Number(sessionStorage.getItem(KEY));
+  const attempt = Number.isFinite(stored) && stored > 0 ? Math.floor(stored) : 0;
 
   if (attempt >= MAX) {
     bar(`gave up \u00b7 upstream refused ${MAX} reloads in a row`);
@@ -29,12 +27,12 @@
   }
 
   sessionStorage.setItem(KEY, String(attempt + 1));
+  chrome.runtime.sendMessage({ type: "vu-report", reloads: 1, absorbed: 1 }).catch(() => {});
 
   const delay = Math.min(500 * 2 ** attempt, 8000) + Math.random() * 300;
   const until = Date.now() + delay;
-  const label = `upstream 503 \u00b7 retry ${attempt + 1}/${MAX} in ${(delay / 1000).toFixed(1)}s`;
 
-  bar(label);
+  bar(`upstream 503 \u00b7 retry ${attempt + 1}/${MAX} in ${(delay / 1000).toFixed(1)}s`);
 
   const tick = setInterval(() => {
     const left = Math.max(0, until - Date.now());

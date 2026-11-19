@@ -1,17 +1,29 @@
 {
   "manifest_version": 3,
   "name": "VU Retry",
-  "version": "1.1.0",
-  "description": "Absorbs 503s, TLS flakiness and empty-response errors on datesheet.vu.edu.pk.",
-  "minimum_chrome_version": "111",
+  "version": "1.2.0",
+  "description": "Retries failed requests on datesheet.vu.edu.pk: 503 pages, dropped connections and TLS errors. Unofficial, unaffiliated with Virtual University.",
+  "minimum_chrome_version": "120",
   "permissions": ["alarms", "storage", "webNavigation"],
   "host_permissions": ["https://datesheet.vu.edu.pk/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
-    "default_title": "VU Retry — click for status"
+    "default_title": "VU Retry — click for status",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "options_page": "options.html",
   "content_scripts": [
