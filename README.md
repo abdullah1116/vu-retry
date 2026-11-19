@@ -37,15 +37,27 @@ Each layer has its own budget, so a retry storm cannot happen by accident:
 Counters live in `sessionStorage` (page) and `chrome.storage.session` (navigation), so they reset
 when a tab closes and survive the service worker being torn down.
 
-## Install (unpacked)
+## Install
 
-1. `chrome://extensions`
-2. enable **Developer mode**
-3. **Load unpacked** → this directory
-4. pin **VU Retry**; the badge reads `OK`, `503`, `ERR`, `CERT`, or `STOP`
+**Fastest — drag the zip.** Download `vu-retry-<version>.zip`, open `chrome://extensions`, and drop
+the file onto the page. Chrome unpacks it into your profile and installs it; the zip itself is no
+longer needed. Verified on Chrome 157 — recent Chrome does the unpacking for you, so there is no
+"where do I put it" step and no folder to accidentally delete later.
+
+**Universal — Load unpacked.** Works on every Chrome from 120 up:
+
+1. unzip the archive to a folder you plan to keep (e.g. `~/.local/share/vu-retry`)
+2. `chrome://extensions` → enable **Developer mode**
+3. **Load unpacked** → pick that folder
+
+Either way, pin **VU Retry** afterwards; the badge reads `OK`, `503`, `ERR`, `CERT`, or `STOP`.
 
 Requires Chrome 120 or newer (the extension uses a 30-second `chrome.alarms` period and
 `world: "MAIN"` content scripts).
+
+The release also carries a signed `.crx`. Chrome refuses to install it — `CRX_REQUIRED_PROOF_MISSING`
+— because it is not signed by the Web Store. It is useful for its stable extension ID
+(`bgmdaaggipcodkokcflgngmfcdgcplid`) and for enterprise policy installs, not for double-clicking.
 
 ## Settings
 
