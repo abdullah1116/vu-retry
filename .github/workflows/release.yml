@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CRX_PRIVATE_KEY: ${{ secrets.CRX_PRIVATE_KEY }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: signing key
+        run: |
+          key="$GITHUB_WORKSPACE/.crx-key.pem"
+          if [ -n "${CRX_PRIVATE_KEY:-}" ]; then
+            printf '%s\n' "$CRX_PRIVATE_KEY" > "$key"
+          else
+            openssl genrsa -out "$key" 2048
+            echo "::warning::CRX_PRIVATE_KEY is not set; using a throwaway key, so the extension id will not be stable"
+          fi
+          chmod 600 "$key"
+
+      - name: pack
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+          CRX_KEY: ${{ github.workspace }}/.crx-key.pem
+        run: bash scripts/pack.sh
+
+      - name: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vu-retry
+          path: dist/*
+          if-no-files-found: error
+
+      - name: release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

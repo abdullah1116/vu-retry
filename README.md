@@ -100,6 +100,16 @@ node --check content/retry503.js
 zip -r -X -9 vu-retry.zip . -x '*.zip' -x 'dist/*'
 ```
 
+## Releasing
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+The `release` workflow validates, builds `dist/vu-retry-<version>.zip` plus a self-signed `.crx`, uploads both as a workflow artifact, and publishes a GitHub Release for the tag. Set `CRX_PRIVATE_KEY` (a PEM RSA key) as a repository secret to keep the extension id stable; without it a throwaway key is generated per run.
+
+A self-signed `.crx` installs only via enterprise policy (`ExtensionSettings` / `ExtensionInstallForcelist`) or a Chromium fork — Chrome rejects it with `CRX_REQUIRED_PROOF_MISSING`, so the `.zip` stays the store artifact.
+
 ## License
 
 MIT — see `LICENSE`.
