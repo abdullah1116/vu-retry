@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "VU Retry",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Retries failed requests on datesheet.vu.edu.pk: 503 pages, dropped connections and TLS errors. Unofficial, unaffiliated with Virtual University.",
   "minimum_chrome_version": "120",
   "permissions": [
