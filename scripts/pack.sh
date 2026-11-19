@@ -51,12 +51,15 @@ if [ -n "${CHROME_BIN:-}" ] && [ -x "${CHROME_BIN}" ]; then
   mkdir -p "$stage"
   unzip -q "$ZIP" -d "$stage" || fail "cannot stage extension for packing"
 
-  pack_args=("--pack-extension=$stage")
+  pack_args=(--no-sandbox --disable-gpu --disable-dev-shm-usage "--pack-extension=$stage")
   if [ -n "${CRX_KEY:-}" ] && [ -f "${CRX_KEY}" ]; then
     pack_args+=("--pack-extension-key=$CRX_KEY")
   fi
 
-  "$CHROME_BIN" "${pack_args[@]}" > /dev/null 2>&1 || fail "chrome --pack-extension failed"
+  if ! "$CHROME_BIN" "${pack_args[@]}" > "$staging/chrome.log" 2>&1; then
+    tail -20 "$staging/chrome.log" >&2
+    fail "chrome --pack-extension failed"
+  fi
   [ -f "$stage.crx" ] || fail "chrome produced no .crx"
   mv "$stage.crx" "$CRX"
   printf '  %s\n' "$(du -h "$CRX" | cut -f1)  dist/$(basename "$CRX")"
