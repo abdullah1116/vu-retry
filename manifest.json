@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "VU Retry",
+  "version": "1.1.0",
+  "description": "Absorbs 503s, TLS flakiness and empty-response errors on datesheet.vu.edu.pk.",
+  "minimum_chrome_version": "111",
+  "permissions": ["alarms", "storage", "webNavigation"],
+  "host_permissions": ["https://datesheet.vu.edu.pk/*"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "VU Retry — click for status"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["https://datesheet.vu.edu.pk/*"],
+      "js": ["content/config.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    },
+    {
+      "matches": ["https://datesheet.vu.edu.pk/*"],
+      "js": ["content/fetchpatch.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://datesheet.vu.edu.pk/*"],
+      "js": ["content/retry503.js"],
+      "run_at": "document_end",
+      "world": "ISOLATED"
+    }
+  ]
+}

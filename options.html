@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>VU Retry — options</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 14px/1.5 system-ui, sans-serif; max-width: 620px; margin: 32px auto; padding: 0 20px; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p.sub { margin: 0 0 24px; opacity: .7; }
+    fieldset { border: 1px solid rgba(128,128,128,.35); border-radius: 10px; padding: 16px 18px; margin: 0 0 16px; }
+    legend { padding: 0 6px; font-weight: 600; }
+    label { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 6px 0; }
+    input[type=number] { width: 110px; padding: 5px 8px; }
+    button { padding: 9px 16px; border-radius: 8px; border: 1px solid rgba(128,128,128,.5); cursor: pointer; font-weight: 600; }
+    #status { white-space: pre-line; font: 12px/1.6 ui-monospace, monospace; opacity: .85; }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+    #saved { opacity: 0; transition: opacity .2s; font-weight: 600; }
+    #saved.on { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>VU Retry</h1>
+  <p class="sub">Retries <code>datesheet.vu.edu.pk</code> at three layers: page reload on 503, navigation retry on network errors, and fetch/XHR retry.</p>
+
+  <fieldset>
+    <legend>Retry budget</legend>
+    <label>Page reloads on 503 (0 = off)
+      <input type="number" id="pageReloads" min="0" max="20">
+    </label>
+    <label>fetch/XHR retries per call (GET/HEAD only)
+      <input type="number" id="fetchRetries" min="0" max="10">
+    </label>
+    <label>Navigation retries per tab per 60s
+      <input type="number" id="maxNavRetries" min="0" max="20">
+    </label>
+    <p style="opacity:.65;margin:10px 0 0">Retry counts apply on the next page load.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Behaviour</legend>
+    <label>Auto-reload when the page shows an upstream error
+      <input type="checkbox" id="autoReload">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Backoff</legend>
+    <label>Base delay (ms)
+      <input type="number" id="baseDelayMs" min="50" max="5000">
+    </label>
+    <label>Max delay (ms)
+      <input type="number" id="maxDelayMs" min="500" max="30000">
+    </label>
+    <label>Probe timeout (ms)
+      <input type="number" id="probeTimeoutMs" min="3000" max="120000">
+    </label>
+  </fieldset>
+
+  <div class="row">
+    <button id="save">Save</button>
+    <span id="saved">saved</span>
+  </div>
+
+  <fieldset style="margin-top:16px">
+    <legend>Live status</legend>
+    <div id="status">…</div>
+  </fieldset>
+
+  <script src="options.js"></script>
+</body>
+</html>
