@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "VU Retry",
-  "version": "1.2.4",
-  "description": "Retries failed requests on datesheet.vu.edu.pk: 503 pages, dropped connections and TLS errors. Unofficial, unaffiliated with Virtual University.",
+  "version": "1.4.0",
+  "description": "Retries failed requests on vu.edu.pk and all its subdomains: 503 pages, dropped connections and TLS errors. Unofficial, unaffiliated with Virtual University.",
   "minimum_chrome_version": "120",
   "permissions": [
     "alarms",
@@ -10,7 +10,7 @@
     "webNavigation"
   ],
   "host_permissions": [
-    "https://datesheet.vu.edu.pk/*"
+    "*://*.vu.edu.pk/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -35,17 +35,19 @@
   "content_scripts": [
     {
       "matches": [
-        "https://datesheet.vu.edu.pk/*"
+        "*://*.vu.edu.pk/*"
       ],
       "js": [
-        "content/config.js"
+        "content/config.js",
+        "content/toast.js",
+        "content/assetguard.js"
       ],
       "run_at": "document_start",
       "world": "ISOLATED"
     },
     {
       "matches": [
-        "https://datesheet.vu.edu.pk/*"
+        "*://*.vu.edu.pk/*"
       ],
       "js": [
         "content/fetchpatch.js"
@@ -55,7 +57,7 @@
     },
     {
       "matches": [
-        "https://datesheet.vu.edu.pk/*"
+        "*://*.vu.edu.pk/*"
       ],
       "js": [
         "content/retry503.js"

@@ -1,6 +1,6 @@
 # VU Retry
 
-Retries failed requests on `datesheet.vu.edu.pk` so a 503 becomes a two-second wait instead of a manual refresh.
+Retries failed requests on `vu.edu.pk` and every subdomain so a 503 becomes a two-second wait instead of a manual refresh.
 
 Unofficial. Not affiliated with Virtual University.
 
@@ -25,6 +25,7 @@ Requires Chrome 120+.
 | `ERR_EMPTY_RESPONSE`, resets, timeouts | background re-navigates the tab |
 | TLS / certificate errors | one fresh handshake, optional toggle |
 | `5xx` on in-page `fetch()` | retries GET/HEAD invisibly |
+| failed `<script>` / `<link>` load | page reloads with backoff, on the same 5-reload budget; skipped while a form field holds unsubmitted input; at most one reload per page load |
 
 Budgets stop it looping: 5 page reloads, 4 navigations per tab per minute, 3 fetch retries. All configurable.
 
@@ -44,12 +45,13 @@ Click the icon.
 
 ## Privacy
 
-No telemetry, no remote code, no requests to any origin except `datesheet.vu.edu.pk`. Retry counters live in memory (`chrome.storage.session`); settings stay on your machine. The health probe runs only while a tab on the site is open, and sends no cookies.
+No telemetry, no remote code, no requests to any origin except `vu.edu.pk` and its subdomains. Retry counters live in memory (`chrome.storage.session`); settings stay on your machine. The health probe runs only while a tab on the site is open, and sends no cookies.
 
 ## Limits
 
 - A POST that died in transit is replayed as a GET — no extension API can resend a form body. The retry still lands you on a working page.
 - `XMLHttpRequest` is not patched; retrying it cannot be hidden from the page's own handlers.
+- A failed `<script>` or `<link>` is recovered by reloading the whole page, not by re-fetching that one asset. Neither XHR nor POST is retried.
 
 ## License
 

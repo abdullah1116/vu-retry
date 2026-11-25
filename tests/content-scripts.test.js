@@ -4,6 +4,7 @@ import vm from "node:vm";
 const source = (name) => fs.readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
 
 const RETRY503 = source("content/retry503.js");
+const TOAST = source("content/toast.js");
 const FETCHPATCH = source("content/fetchpatch.js");
 
 function retry503(bodyText, stored, dataset) {
@@ -46,6 +47,7 @@ function retry503(bodyText, stored, dataset) {
   };
   ctx.window = ctx;
   vm.createContext(ctx);
+  vm.runInContext(TOAST, ctx, { filename: "content/toast.js" });
   vm.runInContext(RETRY503, ctx, { filename: "content/retry503.js" });
 
   const title = byId("__vu-retry-title")?.textContent ?? "";
@@ -85,7 +87,7 @@ async function fetchPatch(dataset) {
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(FETCHPATCH, ctx, { filename: "content/fetchpatch.js" });
-  await ctx.window.fetch("https://datesheet.vu.edu.pk/x", { method: "GET" });
+  await ctx.window.fetch("https://vu.edu.pk/x", { method: "GET" });
   return calls.length;
 }
 

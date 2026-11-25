@@ -28,7 +28,9 @@ done < <(find "$ROOT" -name '*.js' -not -path '*/node_modules/*' -not -path "$DI
 
 python3 -m json.tool "$ROOT/manifest.json" > /dev/null || fail "manifest.json is not valid JSON"
 
-node "$ROOT/tests/content-scripts.test.js" || fail "test suite failed"
+for suite in "$ROOT"/tests/*.test.js; do
+  node "$suite" || fail "test suite failed: $(basename "$suite")"
+done
 
 printf '==> pack\n'
 

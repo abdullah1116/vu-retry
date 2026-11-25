@@ -1,5 +1,19 @@
-const HOST = "datesheet.vu.edu.pk";
-const PROBE_URL = `https://${HOST}/authenticateStudent.aspx`;
+const VU_DOMAIN = "vu.edu.pk";
+const VU_TAB_PATTERN = `*://*.${VU_DOMAIN}/*`;
+
+const isVuHost = (hostname) => {
+  const host = String(hostname ?? "").toLowerCase();
+  return host === VU_DOMAIN || host.endsWith(`.${VU_DOMAIN}`);
+};
+
+const vuOrigin = (url) => {
+  try {
+    const parsed = new URL(url);
+    return isVuHost(parsed.hostname) ? parsed.origin : null;
+  } catch {
+    return null;
+  }
+};
 
 const DEFAULTS = {
   autoReload: true,
@@ -75,9 +89,12 @@ async function probe() {
 
   let open = [];
   try {
-    open = await chrome.tabs.query({ url: `https://${HOST}/*` });
+    open = await chrome.tabs.query({ url: VU_TAB_PATTERN });
   } catch {}
-  if (open.length === 0) return null;
+  const origin = open.map((tab) => vuOrigin(tab?.url)).find(Boolean);
+  if (!origin) return null;
+
+  const host = new URL(origin).host;
 
   probing = true;
   try {
@@ -91,7 +108,7 @@ async function probe() {
     let reachable = false;
 
     try {
-      const res = await fetch(PROBE_URL, {
+      const res = await fetch(`${origin}/`, {
         cache: "no-store",
         credentials: "omit",
         redirect: "follow",
@@ -111,9 +128,9 @@ async function probe() {
       lastProbe: { ok: reachable, status, detail, latency, at: Date.now() },
     });
 
-    if (reachable) await paint("OK", "#1a7f37", `VU reachable · ${status} · ${latency}ms`);
-    else if (status > 0) await paint(String(status), "#b42318", `VU upstream ${status}`);
-    else await paint("ERR", "#b54708", `VU unreachable · ${detail}`);
+    if (reachable) await paint("OK", "#1a7f37", `${host} reachable · ${status} · ${latency}ms`);
+    else if (status > 0) await paint(String(status), "#b42318", `${host} upstream ${status}`);
+    else await paint("ERR", "#b54708", `${host} unreachable · ${detail}`);
 
     return { ok: reachable, status };
   } finally {
@@ -143,7 +160,7 @@ chrome.action.onClicked.addListener(() => {
 chrome.webNavigation.onErrorOccurred.addListener(async (details) => {
   try {
     if (details.frameId !== 0) return;
-    if (new URL(details.url).hostname !== HOST) return;
+    if (!vuOrigin(details.url)) return;
 
     const s = await settings();
     if (!s.autoReload) return;
